@@ -22,7 +22,7 @@
 	SOFTWARE.
 */
 
-﻿using UnityEngine;
+using UnityEngine;
 using System;
 using System.Threading.Collections;
 using System.Collections;
