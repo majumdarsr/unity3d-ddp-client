@@ -27,6 +27,7 @@ using System;
 using System.Threading.Collections;
 using System.Collections;
 using System.Collections.Generic;
+using BestHTTP.WebSocket;
 
 namespace Moulin.DDP {
 
@@ -106,7 +107,8 @@ namespace Moulin.DDP {
 		private CoroutineHelper coroutineHelper;
 		private ConcurrentQueue<JSONObject> messageQueue = new ConcurrentQueue<JSONObject>();
 
-		private WebSocketSharp.WebSocket ws;
+		private WebSocket ws;
+		private Uri uri;
 		private ConnectionState ddpConnectionState;
 		private string sessionId;
 
@@ -141,15 +143,15 @@ namespace Moulin.DDP {
 		public DdpConnection(string url) {
 			coroutineHelper = CoroutineHelper.GetInstance();
 			coroutineHelper.StartCoroutine(HandleMessages());
-
-			ws = new WebSocketSharp.WebSocket(url);
-			ws.OnOpen += OnWebSocketOpen;
-			ws.OnError += OnWebSocketError;
-			ws.OnClose += OnWebSocketClose;
-			ws.OnMessage += OnWebSocketMessage;
+			uri = new System.Uri(url);
+			// ws = new WebSocket(uri);
+			// ws.OnOpen += OnWebSocketOpen;
+			// ws.OnError += OnWebSocketError;
+			// ws.OnClosed += OnWebSocketClosed;
+			// ws.OnMessage += OnWebSocketMessage;
 		}
 
-		private void OnWebSocketOpen(object sender, EventArgs e) {
+		private void OnWebSocketOpen(WebSocket ws) {
 			Send(GetConnectMessage());
 
 			foreach (Subscription subscription in subscriptions.Values) {
@@ -160,19 +162,19 @@ namespace Moulin.DDP {
 			}
 		}
 
-		private void OnWebSocketError(object sender, WebSocketSharp.ErrorEventArgs e) {
+		private void OnWebSocketError(WebSocket ws, Exception ex) {
 			coroutineHelper.RunInMainThread(() => {
 				if (OnError != null) {
 					OnError(new DdpError() {
 						errorCode = "WebSocket error",
-						reason = e.Message
+						reason = ex.Message
 					});
 				}
 			});
 		}
 
-		private void OnWebSocketClose(object sender, WebSocketSharp.CloseEventArgs e) {
-			if (e.WasClean) {
+		private void OnWebSocketClosed(WebSocket ws, UInt16 code, string message) {
+			if (code == (ushort) WebSocketStausCodes.NormalClosure) {
 				ddpConnectionState = ConnectionState.CLOSED;
 				sessionId = null;
 				subscriptions.Clear();
@@ -192,10 +194,10 @@ namespace Moulin.DDP {
 			}
 		}
 
-		private void OnWebSocketMessage(object sender, WebSocketSharp.MessageEventArgs e) {
-			if (logMessages) Debug.Log("OnMessage: " + e.Data);
-			JSONObject message = new JSONObject(e.Data);
-			messageQueue.Enqueue(message);
+		private void OnWebSocketMessage(WebSocket webSocket, string message) {
+			if (logMessages) Debug.Log("OnMessage: " + message);
+			JSONObject json = new JSONObject(message);
+			messageQueue.Enqueue(json);
 		}
 
 		private IEnumerator HandleMessages() {
@@ -471,13 +473,24 @@ namespace Moulin.DDP {
   			  (ddpConnectionState == ConnectionState.DISCONNECTED) ||
   			  (ddpConnectionState == ConnectionState.CLOSED)) {
   			ddpConnectionState = ConnectionState.CONNECTING;
-  			ws.ConnectAsync();
+  			// ws.ConnectAsync();
+				ws = new WebSocket(uri);
+				ws.OnOpen += OnWebSocketOpen;
+				ws.OnError += OnWebSocketError;
+				ws.OnClosed += OnWebSocketClosed;
+				ws.OnMessage += OnWebSocketMessage;
+				ws.Open();
 			}
 		}
 
 		public void Close() {
+			Debug.Log("WAS CONNECTED: " + (ddpConnectionState == ConnectionState.CONNECTED));
 			if (ddpConnectionState == ConnectionState.CONNECTED) {
 				ddpConnectionState = ConnectionState.CLOSING;
+				ws.OnOpen -= OnWebSocketOpen;
+				ws.OnError -= OnWebSocketError;
+				ws.OnClosed -= OnWebSocketClosed;
+				ws.OnMessage -= OnWebSocketMessage;
 				ws.Close();
 			}
 		}
