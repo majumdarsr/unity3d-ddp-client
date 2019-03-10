@@ -192,6 +192,10 @@ namespace Moulin.DDP {
 					}
 				});
 			}
+			ws.OnOpen -= OnWebSocketOpen;
+			ws.OnError -= OnWebSocketError;
+			ws.OnClosed -= OnWebSocketClosed;
+			ws.OnMessage -= OnWebSocketMessage;
 		}
 
 		private void OnWebSocketMessage(WebSocket webSocket, string message) {
@@ -472,6 +476,7 @@ namespace Moulin.DDP {
 			if ((ddpConnectionState == ConnectionState.NOT_CONNECTED) ||
   			  (ddpConnectionState == ConnectionState.DISCONNECTED) ||
   			  (ddpConnectionState == ConnectionState.CLOSED)) {
+				Debug.Log("###CONNECTING###");
   			ddpConnectionState = ConnectionState.CONNECTING;
   			// ws.ConnectAsync();
 				ws = new WebSocket(uri);
@@ -484,13 +489,8 @@ namespace Moulin.DDP {
 		}
 
 		public void Close() {
-			Debug.Log("WAS CONNECTED: " + (ddpConnectionState == ConnectionState.CONNECTED));
 			if (ddpConnectionState == ConnectionState.CONNECTED) {
 				ddpConnectionState = ConnectionState.CLOSING;
-				ws.OnOpen -= OnWebSocketOpen;
-				ws.OnError -= OnWebSocketError;
-				ws.OnClosed -= OnWebSocketClosed;
-				ws.OnMessage -= OnWebSocketMessage;
 				ws.Close();
 			}
 		}
