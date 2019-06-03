@@ -48,11 +48,16 @@ namespace Moulin.DDP {
 		}
 
 		public void Add(string docId, JSONObject fields) {
+			JSONObject existingDoc;
+			if (documents.TryGetValue(docId, out existingDoc)) {
+				// This might happen if device re-subscribes after a disconnect
+				Change(docId, fields, null);
+				return;
+			}
+			documents.Add(docId, fields);
 			if (OnAdded != null) {
 				OnAdded(docId, fields);
 			}
-
-			documents.Add(docId, fields);
 		}
 
 		public void Change(string docId, JSONObject fields, JSONObject cleared) {
