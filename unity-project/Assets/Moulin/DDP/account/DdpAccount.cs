@@ -22,7 +22,7 @@
    SOFTWARE.
  */
 
-﻿using UnityEngine;
+using UnityEngine;
 using System;
 using System.Text;
 using System.Security.Cryptography;
@@ -52,16 +52,22 @@ public class DdpAccount {
 		this.connection = connection;
 	}
 
-	private JSONObject GetPasswordObj(string password) {
+	public string GetDigest(string password) {
 		string digest = BitConverter.ToString(
 			new SHA256Managed().ComputeHash(Encoding.UTF8.GetBytes(password)))
 		                .Replace("-", "").ToLower();
-
-		JSONObject passwordObj = JSONObject.Create();
-		passwordObj.AddField("digest", digest);
-		passwordObj.AddField("algorithm", "sha-256");
-
+		return digest;
+	}
+	private JSONObject GetPasswordObj(string password) {
+		string digest = GetDigest(password);
+		JSONObject passwordObj = GetDigestObj(digest);
 		return passwordObj;
+	}
+	private JSONObject GetDigestObj(string digest) {
+		JSONObject digestObj = JSONObject.Create();
+		digestObj.AddField("digest", digest);
+		digestObj.AddField("algorithm", "sha-256");
+		return digestObj;
 	}
 
 	private void HandleLoginResult(MethodCall loginCall) {
@@ -113,6 +119,19 @@ public class DdpAccount {
 		JSONObject loginPasswordObj = JSONObject.Create();
 		loginPasswordObj.AddField("user", userObj);
 		loginPasswordObj.AddField("password", GetPasswordObj(password));
+
+		MethodCall loginCall = connection.Call("login", loginPasswordObj);
+		yield return loginCall.WaitForResult();
+		HandleLoginResult(loginCall);
+	}
+
+	public IEnumerator LoginWithDigest(string username, string digest) {
+		JSONObject userObj = JSONObject.Create();
+		userObj.AddField("username", username);
+
+		JSONObject loginPasswordObj = JSONObject.Create();
+		loginPasswordObj.AddField("user", userObj);
+		loginPasswordObj.AddField("password", GetDigestObj(digest));
 
 		MethodCall loginCall = connection.Call("login", loginPasswordObj);
 		yield return loginCall.WaitForResult();
