@@ -112,6 +112,17 @@ public class DdpAccount {
 		HandleLoginResult(loginCall);
 	}
 
+	public IEnumerator CreateUserAndLogin(string username, string email, string password) {
+		JSONObject loginPasswordObj = JSONObject.Create();
+		loginPasswordObj.AddField("username", username);
+		loginPasswordObj.AddField("email", email);
+		loginPasswordObj.AddField("password", GetPasswordObj(password));
+
+		MethodCall loginCall = connection.Call("createUser", loginPasswordObj);
+		yield return loginCall.WaitForResult();
+		HandleLoginResult(loginCall);
+	}
+
 	public IEnumerator Login(string username, string password) {
 		JSONObject userObj = JSONObject.Create();
 		userObj.AddField("username", username);
