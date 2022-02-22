@@ -114,8 +114,13 @@ namespace Moulin.DDP {
 
 		public IEnumerator Logout() {
 			MethodCall logoutCall = connection.Call("logout");
-			yield return logoutCall.WaitForResult();
+			
+			if (logoutCall.error != null) {
+				throw new InvalidOperationException("Logout Error! Try Again!");
+			}
+			
 			HandleLogoutResult(logoutCall);
+			yield return logoutCall.WaitForResult();
 		}
 
 	}
